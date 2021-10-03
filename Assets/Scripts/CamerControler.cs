@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class CamerControler : MonoBehaviour
 {
+    [SerializeField] WallRun wallRun;
+
     [SerializeField] private float sensX = 100f;
     [SerializeField] private float sensY = 100f;
 
@@ -35,7 +37,7 @@ public class CamerControler : MonoBehaviour
 
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
 
-        cam.transform.localRotation = Quaternion.Euler(xRotation,yRotation,0);
+        cam.transform.localRotation = Quaternion.Euler(xRotation,yRotation,wallRun.tilt);
         orientation.transform.rotation = Quaternion.Euler(0, yRotation, 0);
 
     }

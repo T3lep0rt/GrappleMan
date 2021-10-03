@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
+    [Header("Random")]
     public float movementSpeed = 6f;
 
     [SerializeField] Transform orientation;
@@ -14,18 +15,30 @@ public class PlayerController : MonoBehaviour
     float verticalMovement;
     float groundDrag = 6f;
     float airDrag = 0.5f;
+    float groundDistance = 0.4f;
 
     float playerHeight = 2f;
     public float jumpForce = 5f;
 
     bool isOnGround;
 
+    [SerializeField] Transform groundCheck;
+
     Vector3 moveDirection;
+    Vector3 slopeMoveDirection;
 
     Rigidbody rb;
+    [SerializeField] LayerMask groundMask;
+    RaycastHit slopeHit;
 
     [Header("Keybinds")]
     [SerializeField] KeyCode jumpKey = KeyCode.Space;
+    [SerializeField] KeyCode sprintKey = KeyCode.LeftShift;
+
+    [Header("Sprinting")]
+    [SerializeField] float walkSpeed = 5f;
+    [SerializeField] float sprintSpeed = 10f;
+    [SerializeField] float acceleration = 10f;
 
     private void Start()
     {
@@ -34,20 +47,40 @@ public class PlayerController : MonoBehaviour
     }
     private void Update()
     {
-        isOnGround = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.1f);
+        isOnGround = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
 
         MyInput();
         ControlDrag();
+        ControlSpeed();
 
         if(Input.GetKeyDown(jumpKey) && isOnGround)
         {
             Jump();
         }
+
+        slopeMoveDirection = Vector3.ProjectOnPlane(moveDirection, slopeHit.normal);
     }
+
+    void ControlSpeed()
+    {
+        if(Input.GetKey(sprintKey) && isOnGround)
+        {
+            movementSpeed = Mathf.Lerp(movementSpeed, sprintSpeed, acceleration * Time.deltaTime);
+        }
+        else
+        {
+            movementSpeed = Mathf.Lerp(movementSpeed, walkSpeed, acceleration * Time.deltaTime);
+        }
+    }
+
 
     void Jump()
     {
-        rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+        if (isOnGround)
+        {
+            rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+            rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+        }
     }
 
     void MyInput()
@@ -65,9 +98,13 @@ public class PlayerController : MonoBehaviour
 
     void MovePlayer()
     {
-        if (isOnGround)
+        if (isOnGround && !OnSlope())
         {
             rb.AddForce(moveDirection.normalized * movementSpeed * movementMultiplier, ForceMode.Acceleration);
+        }
+        else if (isOnGround && OnSlope())
+        {
+            rb.AddForce(slopeMoveDirection.normalized * movementSpeed * movementMultiplier, ForceMode.Acceleration);
         }
         else if(!isOnGround)
         {
@@ -83,7 +120,23 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            rb.drag = airDrag;
+            if(rb.drag > 0.0f)
+                rb.drag = airDrag;
         }
+    }
+
+    private bool OnSlope()
+    {
+        if(Physics.Raycast(transform.position, Vector3.down, out slopeHit, playerHeight * 0.5f + 0.5f))
+        {
+            if(slopeHit.normal != Vector3.up)
+            {
+                return true;
+            }else
+            {
+                return false;
+            }
+        }
+        return false;
     }
 }
